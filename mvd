@@ -1,0 +1,14 @@
+#!/bin/sh
+
+[ $# -lt 2 ] && exit 1
+
+eval "last=\${$#}"
+
+if echo "$last" | grep -q "/$"; then
+	if [ ! -e "$last" ]; then
+		mkdir -p "$last"
+	fi
+fi
+
+mv -i "$@"
+

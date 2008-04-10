@@ -1,0 +1,34 @@
+#!/bin/sh
+
+usage() {
+	printf "Usage: $0 mem [mb|kb] | hd [block|fs [fstype]] | net [iface] | upt\n"
+}
+
+case "$1" in
+	'mem')
+		case "$2" in
+			'mb') watch --interval=0 free -mtl ;;
+			'kb') watch --interval=0 free -ktl ;;
+			*) usage ;;
+		esac ;;
+	'hd')
+		case "$2" in
+			'block') watch --interval=0 df -akP ;;
+			'fs')
+				case "$3" in
+					ext*) watch --interval=0 df -akp -t $3 ;;
+					*) usage ;;
+				esac ;;
+			*) usage ;;
+		esac ;;
+	'net')
+		case "$2" in
+			eth[0-9]) netwatch -e $2 ;;
+			*) usage ;;
+		esac ;;
+
+	'upt')
+		watch --interval=0 uptime ;;
+	*)
+		usage ;;
+esac

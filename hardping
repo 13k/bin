@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ -z "$*" ]; then
+	host="www.google.com"
+else
+	host="$*"
+fi
+
+while true; do
+	ping -c 1 -w 3 $host
+	[ $? -eq 0 ] && break
+done
+
+echo "$host is alive"

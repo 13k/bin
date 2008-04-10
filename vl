@@ -1,0 +1,7 @@
+#!/bin/bash
+# vl: prits a given line from a given file
+# author: k
+
+[ $# -lt 2 ] && exit 1
+
+awk '{ if (NR == "'$1'") print $0; }' $2

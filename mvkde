@@ -1,0 +1,16 @@
+#!/bin/sh
+
+function usage()
+{
+	echo "Usage: $0 <filename>"
+}
+
+if [ $# -lt 1 ]; then
+	usage
+	exit 1
+fi
+
+old="$1"
+new=`echo "$old" | sed -e 's/^[0-9]*-//'`
+
+mv "$old" "$new"

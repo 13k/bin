@@ -1,0 +1,126 @@
+#!/bin/sh
+#
+# fe -- find except
+#
+# Finds files and/or directories with a given regex (specified by multiple '-m'
+# parameters) and excluding from result files and/or directories with a given
+# regex (specified by multiple '-n' parameters)
+#
+
+IGNORECASE=1
+TYPE_FILE=2
+TYPE_DIR=4
+
+patt_ops=(
+	"i:$IGNORECASE" # ignore case
+	"f:$TYPE_FILE"  # type = file
+	"d:$TYPE_DIR"   # type = dir
+)
+
+i=0
+j=0
+
+function parse_pattern_op()
+{
+	ret=0
+	pattern="$1"
+
+	if echo "$1" | grep -q "/\w\+$"; then
+		ops=`echo "$1" | sed -e 's#^.*/\(\w\+\)$#\1#'`
+		pattern=`echo "$1" | sed -e 's#^\(.*\)/\w\+$#\1#'`
+		for s in ${patt_ops[@]}; do
+			op=`echo "$s" | cut -d':' -f1`
+			val=`echo "$s" | cut -d':' -f2`
+			if echo "$ops" | grep -q -i "$op"; then
+				((ret += $val))
+			fi
+		done
+	fi
+
+	echo "$pattern"
+
+	return $ret
+}
+
+function parse_patterns()
+{
+	patts=$1
+
+	if [ ${#patts} -eq 0 ]; then
+		echo ""
+		return
+	fi
+
+	((i=0))
+	result="( "
+
+	for patt in "${patts[@]}"; do
+
+		p=`parse_pattern_op $patt`
+		ret=$?
+
+		ic=""
+		type=""
+		
+		if (($ret & $IGNORECASE)); then
+			ic="i"
+		fi
+
+		if (($ret & $TYPE_FILE)); then
+			type="-type f"
+		elif (($ret & $TYPE_DIR)); then
+			type="-type d"
+		fi
+
+		if [ $i -gt 0 ]; then
+			result="$result -o"
+		fi
+
+		if [ -n "$type" ]; then
+			result="$result ( -${ic}regex '$p' -a $type )"
+		else
+			result="$result -${ic}regex '$p'"
+		fi
+
+		((i += 1))
+	done
+
+	result="$result )"
+	echo $result
+}
+
+while getopts "m:n:" opt; do
+	case $opt in
+		m) match[$i]="$OPTARG";
+			((i += 1));;
+
+		n) nmatch[$j]="$OPTARG";
+			((j += 1));;
+		*) : ;;
+	esac
+done
+
+shift $(($OPTIND-1));
+
+pos=`parse_patterns $match`
+neg=`parse_patterns $nmatch`
+
+cl=""
+
+if [ -n "$pos" -a -n "$neg" ]; then
+	cl="$pos -a ! $neg"
+elif [ -n "$pos" ]; then
+	cl="$pos"
+elif [ -n "$neg" ]; then
+	cl="! $neg"
+fi
+
+DIR="."
+
+if [ $# -gt 0 -a -d "$1" ]; then
+	DIR="$1"
+fi
+
+cl="-regextype posix-egrep $cl"
+
+echo "$DIR $cl" | xargs find

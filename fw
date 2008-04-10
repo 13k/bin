@@ -1,0 +1,17 @@
+#!/bin/bash
+# ff: see $desc
+# author: k
+
+desc="Searches a given directory for files cointaning a given word"
+
+function usage {
+	echo "Usage: $0 <dir> <regex>"
+	echo "$desc"
+}
+
+[ $# -lt 2 ] && usage && exit 1
+
+find "$1" -exec grep -n -H "$2" '{}' 2>/dev/null \; #| \
+#	awk -F: '{print $2":\t"$1}' | \
+#	sed "s/\.\///"
+
