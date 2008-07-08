@@ -1,0 +1,3 @@
+#!/bin/sh
+
+ssh -N -L 13333:192.168.182.2:22 -2 kmurata@grad.icmc.usp.br
