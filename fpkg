@@ -1,5 +1,0 @@
-#!/bin/sh
-
-[ -z "$1" ] && echo "Usage: $0 name" && exit 1
-
-find /packages/ -type f -iname "*$1*"
