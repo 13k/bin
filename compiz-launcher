@@ -1,0 +1,65 @@
+#!/bin/sh
+# Launches compiz with the specified window decorator [defaults to gtk]
+# This is script is based on the original compiz-kde script from the compiz distribution.
+
+GLXINFO=`which glxinfo`
+EXT_TFP='GLX_EXT_texture_from_pixmap'
+
+COMPIZ_OPTIONS="--replace"
+
+COMPIZ=`which compiz`
+COMPIZ_LIB=`pkg-config --variable=libdir compiz`
+
+EMERALD=`which emerald`
+KDEWD=`which kde-window-decorator`
+KDE4WD=`which kde4-window-decorator`
+GTKWD=`which gtk-window-decorator`
+
+# Check whether the GLX_EXT_texture_from_pixmap extension is available in
+# direct or indirect rendering contexts. If it is available only in indirect
+# rendering contexts, force compiz to use indirect rendering.
+if test `$GLXINFO 2> /dev/null | grep -c $EXT_TFP` -lt 3; then
+	echo "$EXT_TFP is not available with direct rendering."
+
+	export LIBGL_ALWAYS_INDIRECT=1
+	if test `$GLXINFO 2> /dev/null | grep -c $EXT_TFP` -lt 3; then
+		echo "$EXT_TFP is not available with indirect rendering. Aborting!"
+		unset LIBGL_ALWAYS_INDIRECT
+		exit 1
+	else
+		echo "$EXT_TFP is available with indirect rendering."
+		COMPIZ_OPTIONS="$COMPIZ_OPTIONS --indirect-rendering"
+	fi
+else
+	echo "$EXT_TFP is available with direct rendering."
+fi
+
+if echo "$1" | grep -q '^--decorator='; then
+	deco=`echo $1 | sed -e 's#^--decorator=##' -e 's#\(.\)#\l\1#g'`
+	case $deco in
+		kde) DECORATOR="$KDEWD";;
+		kde4) DECORATOR="$KDE4WD";;
+		gtk) DECORATOR="$GTKWD";;
+		emerald) DECORATOR="$EMERALD";;
+		*) echo "Wrong decorator. Possible values are kde, kde4, gtk and emerald"; exit 1;;
+	esac
+	shift
+else
+	echo "No window decorator specified, defaulting to GTK"
+	DECORATOR="$GTKWD"
+fi
+
+# start the window decorator if present
+if [ ! -x "$DECORATOR" ]; then
+	echo "The specified window decorator doesn't exists"
+else
+	"$DECORATOR" --replace &
+fi
+
+# load the gconf plugin if present
+if [ -f "$COMPIZ_LIB/compiz/libgconf.so" ]; then
+	COMPIZ_PLUGINS="$COMPIZ_PLUGINS gconf"
+fi
+
+# always load the gconf plugin
+"$COMPIZ" $COMPIZ_OPTIONS "$@" $COMPIZ_PLUGINS
