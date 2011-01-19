@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/bin/sh
 
-TPC_BIN=`which TurionPowerControl`
-TPC_CONFIG="/etc/tpc.cfg"
+TPC_BIN=/usr/local/sbin/TurionPowerControl
+TPC_CONFIG=/etc/tpc.cfg
 TPC_CORES=4
-LOGGER=false
+LOGGER=true
 
-if [ $UID -eq 0 ]; then
+if [ `id -u` -eq 0 ]; then
 	sudo=""
 else
 	sudo="sudo"
@@ -17,12 +17,14 @@ for mod in msr cpuid; do
 	fi
 done
 
-$sudo $TPC_BIN -cfgfile $TPC_CONFIG &> /dev/null
+$sudo "$TPC_BIN" -cfgfile "$TPC_CONFIG" > /dev/null
 result=$?
 
-for ((i=0;i<TPC_CORES;i++)); do
-	$tpc -fo $i 4 &> /dev/null
-	$tpc -fo $i 0 &> /dev/null
+core=0
+while expr $core "<" $TPC_CORES > /dev/null; do
+	$sudo $TPC_BIN -fo $core 4 > /dev/null
+	$sudo $TPC_BIN -fo $core 0 > /dev/null
+	core=`expr $core + 1`
 done
 
 message="tpc started at `date`. result: $result"
