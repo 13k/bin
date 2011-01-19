@@ -4,5 +4,5 @@ branch=${1:-master}
 remote=${2:-origin}
 merge=${3:-refs/heads/$branch}
 
-git config --set branch.$branch.remote $remote
-git config --set branch.$branch.merge $merge
+git config branch.$branch.remote $remote
+git config branch.$branch.merge $merge
