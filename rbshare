@@ -1,0 +1,5 @@
+#!/usr/bin/ruby
+require 'webrick'
+s = WEBrick::HTTPServer.new :Port => 3001, :DocumentRoot => Dir.pwd
+trap('INT') { s.shutdown }
+s.start

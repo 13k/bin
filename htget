@@ -1,0 +1,3 @@
+#!/bin/sh
+
+wget -r -np -nH "http://$1:$2/$3"

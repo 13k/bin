@@ -1,6 +1,0 @@
-#!/bin/sh
-
-PORT=13081
-HOST=k@kside.net
-
-ssh -c 3des -D $PORT $HOST

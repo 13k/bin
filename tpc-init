@@ -1,0 +1,30 @@
+#!/bin/bash
+
+TPC_BIN=`which TurionPowerControl`
+TPC_CONFIG="/etc/tpc.cfg"
+TPC_CORES=4
+
+if [ -r /etc/default/tpc ]; then
+	. /etc/default/tpc
+fi
+
+if [ $UID -eq 0 ]; then
+	sudo=""
+else
+	sudo="sudo"
+fi
+
+for mod in msr cpuid; do
+	if ! lsmod | grep -q msr; then
+		$sudo modprobe $mod
+	fi
+done
+
+$sudo $TPC_BIN -cfgfile $TPC_CONFIG &> /dev/null
+
+for ((i=0;i<TPC_CORES;i++)); do
+	$tpc -fo $i 4 &> /dev/null
+	$tpc -fo $i 0 &> /dev/null
+done
+
+$sudo logger -t "tpc" "started at `date`"

@@ -1,0 +1,41 @@
+#!/bin/sh
+
+dir=/ia32
+
+for d in proc home dev sys; do
+	sudo mkdir -p "$dir/$d"
+done
+
+sudomount() {
+	src="$1"
+	dest="$2"
+	shift 2
+	if ! mount -l | grep -q "$dest"; then
+		if echo "$src" | grep -q "^UUID="; then
+			uuid="${src#UUID=}"
+			sudo mount -U "$uuid" "$dest" "$@"
+		else
+			sudo mount "$src" "$dest" "$@"
+		fi
+	fi
+}
+
+sudomount "proc" "$dir/proc" -t proc
+sudomount "sysfs" "$dir/sys" -t sysfs
+sudomount "/dev" "$dir/dev" --bind
+sudomount "/tmp" "$dir/tmp" --bind
+sudomount "UUID=33661832-59f1-456c-91b5-5356c582ac03" "$dir/home" -t ext4
+sudomount "UUID=88c7ba03-be18-4927-947a-def2145e60ef" "$dir/mnt/lin-data" -t ext3
+sudomount "UUID=758C44794ACE0CC8" "$dir/mnt/win-data" -t ntfs-3g
+
+[ -n "$1" ] && cmd="$@" || cmd="${SHELL} -i"
+
+tmp=`mktemp --tmpdir="$dir/tmp"`
+chroottmp="/tmp/`basename $tmp`"
+echo "xhost +localhost > /dev/null" > "$tmp"
+echo "export DISPLAY=$DISPLAY" >> "$tmp"
+echo "export IA32=1" >> "$tmp"
+echo "exec $cmd" >> "$tmp"
+
+sudo chroot "$dir" su -c "sh \"$chroottmp\"" "$USER"
+

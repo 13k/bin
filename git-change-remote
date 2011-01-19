@@ -1,0 +1,77 @@
+#!/bin/sh
+# Changes the remote origin from a git repository to the specified.
+
+if [ -z "`which git`" ]; then
+	echo "Git is not available on PATH. Aborting."
+fi
+
+usage() {
+	echo "Usage: $0 [options] <local repository> <remote repository>"
+	echo ""
+	echo "Options:"
+	echo "  -f | --force         Force remote overriding if NAME already exists"
+	echo "  -h | --help          Shows this help"
+	echo "  -n | --name=NAME     Sets the remote name to NAME [default: origin]"
+	echo "  -p | --pretend       Pretend all actions (i.e. do nothing)"
+}
+
+TMP=`getopt -o 'n:fph' -l 'name:,force,help,pretend' -- "$@"`
+[ $? != 0 ] && usage && exit 1
+
+eval set -- "$TMP"
+
+FORCE=false
+PRETEND=
+REMOTE_NAME="origin"
+
+while true; do
+	case "$1" in
+		-n|--name) REMOTE_NAME="$2"; shift 2;;
+		-f|--force) FORCE=true; shift;;
+		-p|--pretend) PRETEND=true; shift;;
+		-h|--help) usage; exit 0;;
+		--) shift; break;;
+		*) usage; exit 1;;
+	esac
+done
+
+if [ $# -lt 2 ]; then
+	usage; exit 1
+fi
+
+confirm_rm_remote() {
+	if $FORCE; then
+		return 0
+	fi
+	echo -n "There's already a remote named "$1", this operation will override it, are you sure? [y/N] "
+	read answer
+	case "$answer" in
+		y*|Y*) return 0;;
+		*) return 1;;
+	esac
+}
+
+LOCAL_REPO="$1"
+REMOTE_REPO="$2"
+
+if [ ! -d "$LOCAL_REPO" ]; then
+	echo "Local repository '$LOCAL_REPO' doesn't exists. Aborting"
+	exit 1
+fi
+
+PRETEND_CMD=${PRETEND:+"echo"}
+
+OLD_PWD="$PWD"
+cd "$LOCAL_REPO"
+# remove old remote repo
+if git remote | grep -q "$REMOTE_NAME"; then
+	if confirm_rm_remote "$REMOTE_NAME"; then
+		$PRETEND_CMD git remote rm "$REMOTE_NAME"
+	else
+		echo "Not removing old remote $REMOTE_NAME"
+		exit 0
+	fi
+fi
+
+$PRETEND_CMD git remote add "$REMOTE_NAME" "$REMOTE_REPO"
+cd "$OLD_PWD"

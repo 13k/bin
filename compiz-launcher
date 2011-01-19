@@ -1,65 +1,160 @@
-#!/bin/sh
+#!/bin/bash
 # Launches compiz with the specified window decorator [defaults to gtk]
+# and a specified control backend plugin [defaults to gconf].
 # This is script is based on the original compiz-kde script from the compiz distribution.
+#
+# Available window decorators: gtk, kde, kde4, emerald
+# Available control backends: gconf, kconf, ccp, ini, dbus
+#
+# Author: Kiyoshi Murata <kbmurata@gmail.com>
+
+# do nothing if compiz is not installed
+if ! pkg-config --exists compiz; then
+	exit 1
+fi
+
+# decorations plugin must be enabled to use window decorations
+COMPIZ_PLUGINS="decoration"
+
+POSSIBLE_DECORATORS="emerald gtk kde kde4"
+POSSIBLE_BACKENDS="ccp gconf kconf ini dbus"
+
+LOGFILE="/tmp/compiz-launcher.log"
+LOG="file"
+VERBOSE=true
+
+case "$TERM" in
+	linux|*term*) LOG="stdout";;
+	*) LOG="file";;
+esac
+
+function log() {
+	if $VERBOSE; then
+		case "$LOG" in
+			stdout) echo "$*";;
+			file) echo "$*" >> "$LOGFILE";;
+		esac
+	fi
+}
+
+function usage() {
+	log "Usage: $0 [options] [-- compiz arguments]"
+	log ""
+	log "Options:"
+	log "  -c --config        Defines which control backend to use. [default: gconf. Possible values: $POSSIBLE_BACKENDS]"
+	log "  -d --decorator     Defines which window decorator to use. [default: gtk. Possible values: $POSSIBLE_DECORATORS]"
+	log "  -h --help          Shows this help."
+	log "  -v --verbose       Be verbose [if no (inter)active terminal, logs actions to $LOGFILE]"
+	log ""
+	log "Any argument after '--' will be sent directly to compiz."
+}
 
 GLXINFO=`which glxinfo`
 EXT_TFP='GLX_EXT_texture_from_pixmap'
 
 COMPIZ_OPTIONS="--replace"
 
-COMPIZ=`which compiz`
-COMPIZ_LIB=`pkg-config --variable=libdir compiz`
+COMPIZ="`pkg-config --variable=prefix compiz`/bin/compiz"
+COMPIZ_LIB="`pkg-config --variable=libdir compiz`/compiz"
 
+# decorators binaries paths
 EMERALD=`which emerald`
 KDEWD=`which kde-window-decorator`
 KDE4WD=`which kde4-window-decorator`
 GTKWD=`which gtk-window-decorator`
 
+# plugin libs paths
+CFG_CCP="$COMPIZ_LIB/libccp.so"
+CFG_GCONF="$COMPIZ_LIB/libgconf.so"
+CFG_KCONFIG="$COMPIZ_LIB/libkconfig.so"
+CFG_INI="$COMPIZ_LIB/libini.so"
+CFG_DBUS="$COMPIZ_LIB/libdbus.so"
+
+# user options
+DECO_NAME=""
+CFG_NAME=""
+CFG_LIB=""
+
+# option parsing using 'getopt'
+TMP=`getopt -o 'c:d:hv' -l 'config:,decorator:,help,verbose' -- "$@"`
+
+if [ $? != 0 ]; then echo "Error when calling getopt" >&2; exit 1; fi
+
+eval set -- "$TMP"
+
+while true; do
+	case "$1" in
+		-c|--config) CFG_NAME="$2"; shift 2 ;;
+		-d|--decorator) DECO_NAME="$2"; shift 2 ;;
+		-h|--help) VERBOSE=true; usage; exit 0;;
+		-v|--verbose) VERBOSE=true; shift;;
+		--) shift; break;;
+		*) VERBOSE=true; usage; exit 1;;
+	esac
+done
+
 # Check whether the GLX_EXT_texture_from_pixmap extension is available in
 # direct or indirect rendering contexts. If it is available only in indirect
 # rendering contexts, force compiz to use indirect rendering.
 if test `$GLXINFO 2> /dev/null | grep -c $EXT_TFP` -lt 3; then
-	echo "$EXT_TFP is not available with direct rendering."
+	log "$EXT_TFP is not available with direct rendering."
 
 	export LIBGL_ALWAYS_INDIRECT=1
 	if test `$GLXINFO 2> /dev/null | grep -c $EXT_TFP` -lt 3; then
-		echo "$EXT_TFP is not available with indirect rendering. Aborting!"
+		log "$EXT_TFP is not available with indirect rendering. Aborting!"
 		unset LIBGL_ALWAYS_INDIRECT
 		exit 1
 	else
-		echo "$EXT_TFP is available with indirect rendering."
+		log "$EXT_TFP is available with indirect rendering."
 		COMPIZ_OPTIONS="$COMPIZ_OPTIONS --indirect-rendering"
 	fi
 else
-	echo "$EXT_TFP is available with direct rendering."
+	log "$EXT_TFP is available with direct rendering."
 fi
 
-if echo "$1" | grep -q '^--decorator='; then
-	deco=`echo $1 | sed -e 's#^--decorator=##' -e 's#\(.\)#\l\1#g'`
-	case $deco in
-		kde) DECORATOR="$KDEWD";;
-		kde4) DECORATOR="$KDE4WD";;
-		gtk) DECORATOR="$GTKWD";;
-		emerald) DECORATOR="$EMERALD";;
-		*) echo "Wrong decorator. Possible values are kde, kde4, gtk and emerald"; exit 1;;
-	esac
-	shift
+if [ -z "$DECO_NAME" ]; then
+	log "No window decorator specified, defaulting to GTK"
+	DECO_NAME="gtk"
+fi
+
+case "$DECO_NAME" in
+	kde) DECORATOR="$KDEWD";;
+	kde4) DECORATOR="$KDE4WD";;
+	gtk) DECORATOR="$GTKWD";;
+	emerald) DECORATOR="$EMERALD";;
+	*) log "Wrong decorator ($DECO_NAME). Possible values are: $POSSIBLE_DECORATORS"; exit 1;;
+esac
+
+# Fallback to gconf control backend if plugin present
+if [ -z "$CFG_NAME" ]; then
+	log "No control backend specified, defaulting to gconf"
+	CFG_NAME="gconf"
+fi
+
+case "$CFG_NAME" in
+	ccp) CFG_LIB="$CFG_CCP";;
+	gconf) CFG_LIB="$CFG_GCONF";;
+	kconf) CFG_LIB="$CFG_KCONF";;
+	dbus) CFG_LIB="$CFG_DBUS";;
+	ini) CFG_LIB="$CFG_INI";;
+	*) log "Unknown control backend: $CFG_NAME. Possible backends: $POSSIBLE_BACKENDS"; exit 1;;
+esac
+
+if [ -f "$CFG_LIB" ]; then
+	COMPIZ_PLUGINS="$COMPIZ_PLUGINS $CFG_NAME"
 else
-	echo "No window decorator specified, defaulting to GTK"
-	DECORATOR="$GTKWD"
+	log "Control backend specified ($CFG_NAME) was not found in '$CFG_LIB'"
+	exit 1
 fi
 
 # start the window decorator if present
 if [ ! -x "$DECORATOR" ]; then
-	echo "The specified window decorator doesn't exists"
+	log "The specified window decorator doesn't exists"
 else
+	log "Running decorator $DECO_NAME"
 	"$DECORATOR" --replace &
 fi
 
-# load the gconf plugin if present
-if [ -f "$COMPIZ_LIB/compiz/libgconf.so" ]; then
-	COMPIZ_PLUGINS="$COMPIZ_PLUGINS gconf"
-fi
-
-# always load the gconf plugin
-"$COMPIZ" $COMPIZ_OPTIONS "$@" $COMPIZ_PLUGINS
+# start compiz
+log "Running compiz with control backend $CFG_NAME"
+exec "$COMPIZ" $COMPIZ_OPTIONS "$@" $COMPIZ_PLUGINS

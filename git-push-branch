@@ -1,0 +1,6 @@
+#!/bin/sh
+
+head=`git symbolic-ref HEAD`
+branch=`basename $head`
+
+git push origin +$branch:${1:-$branch}

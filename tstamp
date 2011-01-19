@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ -z "$*" ]; then
+	fmt='%Y%m%d-%H%M%S'
+else
+	fmt=''
+	while [ $# -gt 0 ]; do
+		switch=$1; shift
+		case $switch in
+			y) fmt="$fmt%y";;
+			Y) fmt="$fmt%Y";;
+			m) fmt="$fmt%m";;
+			d) fmt="$fmt%d";;
+			h) fmt="$fmt%H";;
+			i) fmt="$fmt%M";;
+			s) fmt="$fmt%S";;
+		esac
+	done
+fi
+
+date +"$fmt"
