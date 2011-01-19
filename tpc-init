@@ -3,6 +3,7 @@
 TPC_BIN=`which TurionPowerControl`
 TPC_CONFIG="/etc/tpc.cfg"
 TPC_CORES=4
+LOGGER=false
 
 if [ $UID -eq 0 ]; then
 	sudo=""
@@ -24,4 +25,10 @@ for ((i=0;i<TPC_CORES;i++)); do
 	$tpc -fo $i 0 &> /dev/null
 done
 
-$sudo logger -t "tpc" "started at `date`. result: $result"
+message="tpc started at `date`. result: $result"
+
+if $LOGGER; then
+	$sudo logger -t "tpc" "$message"
+else
+	echo "$message"
+fi
