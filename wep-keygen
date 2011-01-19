@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby
+
+# pad the plaintext to 64 characters, then get an MD5 digest
+# 128 bits, duh.
+
+require 'digest/md5'
+
+def pad(text)
+  v = text.to_s * (1 + (64 / text.length))
+  v[0,64]
+end
+
+def wep_key(text)
+  Digest::MD5.hexdigest(pad(text))
+end
+
+puts wep_key(ARGV.first)

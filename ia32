@@ -38,4 +38,3 @@ echo "export IA32=1" >> "$tmp"
 echo "exec $cmd" >> "$tmp"
 
 sudo chroot "$dir" su -c "sh \"$chroottmp\"" "$USER"
-

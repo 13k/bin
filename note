@@ -1,0 +1,3 @@
+#!/bin/sh
+
+gvim -U "$HOME/.gvimrc.note"
