@@ -1,0 +1,86 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+require 'optparse'
+require 'ostruct'
+
+module MoveMkdir
+  class OptionParser
+    def self.parse!(args)
+      options = OpenStruct.new
+
+      ::OptionParser.new do |opt|
+        opt.banner = "Enhanced mv(1). It will move SOURCE files and create DEST directory if it does not exists"
+        opt.separator "[This utility has the same options as mv(1)]"
+        opt.separator "Usage: #{CmdName} [OPTION]... [-T] SOURCE DEST"
+        opt.separator "  or:  #{CmdName} [OPTION]... SOURCE... DIRECTORY"
+        opt.separator "  or:  #{CmdName} [OPTION]... -t DIRECTORY SOURCE..."
+        opt.separator "Rename SOURCE to DEST, or move SOURCE(s) to DIRECTORY."
+        opt.separator ""
+        opt.separator "Mandatory arguments to long options are mandatory for short options too."
+
+        opt.on('-v', '--[no-]verbose', "explain what is being done") do |v|
+          options.verbose = v
+        end
+      end.parse!(args)
+
+      options
+    end
+  end
+
+  def self.run(args)
+    @fileutils = FileUtils
+    
+    begin
+      @options = OptionParser.parse!(args)
+
+      @fileutils = FileUtils::Verbose if @options.verbose
+
+      move!(*args)
+    rescue ArgumentError
+      err $!.message
+      err "Try `#{CmdName} --help' for more information."
+      quit
+    end
+  end
+
+  def self.move!(*args)
+    raise ArgumentError, "missing file operand" if args.empty?
+    raise ArgumentError, "missing destination file operand" if args.size == 1
+
+    if not File.exist?(args.last)
+      if args.size > 2
+        @fileutils.mkdir_p args.last
+      elsif (args.size == 2) and args.last.include?(File::SEPARATOR)
+        @fileutils.mkdir_p File.dirname(args.last)
+      end
+    end
+
+    mv_opts = {}
+    begin
+      src = args[0..-2]
+      @fileutils.mv((src.size == 1 ? src.first : src), args.last, mv_opts)
+    rescue Errno::EPERM
+      mv_opts[:force] = true
+      retry
+    end
+  end
+
+  def self.err(msg, prefix="#{CmdName}: ")
+    $stderr.puts "#{prefix}#{msg}"
+  end
+
+  def self.say(msg, prefix="")
+    puts "#{prefix}#{msg}"
+  end
+
+  def self.quit(status=1, msg=nil)
+    err(msg) unless msg.nil?
+    exit status
+  end
+end
+
+if $0 == __FILE__
+  MoveMkdir::CmdName = File.basename($0)
+  MoveMkdir.run(ARGV)
+end

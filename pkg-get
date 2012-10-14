@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $0 <pkg_name> [arch]
+# $0 <pkg_name> [arch] [release]
 
 [ -z "$1" ] && exit 1
 
@@ -8,8 +8,9 @@ arch=${2:=$(dpkg-architecture | grep '^DEB_BUILD_ARCH=' | cut -d'=' -f1)}
 pkg="$1"
 v=$(cat /etc/debian_version)
 deb_version=$(echo $v | grep -q '/' && dirname $v || echo $v)
+deb_version=${3:=$deb_version}
 
-url=$(curl -s "http://packages.debian.org/$deb_version/$arch/$pkg/download" | grep 'ftp\.br\.debian\.org' | sed -re 's#.*<a href="([^"]+)">.*#\1#')
+url=$(curl -s "http://packages.debian.org/$deb_version/$arch/$pkg/download" | grep 'ftp\.us\.debian\.org' | sed -re 's#.*<a href="([^"]+)">.*#\1#')
 
 [ -z "$url" ] && echo "Failed to get $pkg [$arch]"
 

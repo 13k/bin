@@ -1,5 +1,0 @@
-#!/bin/sh
-
-[ -n "$1" ] && DIR="$1" || DIR="$HOME"
-
-du -h --max-depth=2 $DIR | grep "^[0-9]\+\([.,][0-9]\+\)\?[MG]"

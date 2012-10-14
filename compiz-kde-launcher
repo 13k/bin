@@ -1,3 +1,0 @@
-#!/bin/sh
-
-compiz-launcher -c gconf -d kde4
