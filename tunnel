@@ -11,4 +11,4 @@ PORT="$1"
 SSH_HOST="$2"
 SSH_PORT=${3:+"-p $3"}
 
-ssh -c 3des -D "$PORT" $SSH_PORT "$SSH_HOST"
+ssh -N -D "$PORT" $SSH_PORT "$SSH_HOST"
