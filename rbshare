@@ -4,6 +4,16 @@ require 'webrick'
 
 p = ENV['PORT'] || ARGV.first || 4567
 d = ENV['DIR'] || ARGV.last || Dir.pwd
-s = WEBrick::HTTPServer.new :Port => p, :DocumentRoot => d
-trap('INT') { s.shutdown }
-s.start
+
+s = WEBrick::Utils.create_listeners nil, p
+
+sv = WEBrick::HTTPServer.new({
+  :DoNotListen => true,
+  :Port => p,
+  :DocumentRoot => d
+})
+
+sv.listeners.replace s
+
+trap('INT') { sv.shutdown }
+sv.start
