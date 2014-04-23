@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+# vim: ft=ruby
+
+gem_path = `gem env GEM_PATH`.rstrip
+gem_path.split(':').each do |path|
+  next unless Dir.exists?(path)
+
+  Dir.glob(File.join(path, "gems", "*")) do |gem_dir|
+    basename = File.basename(gem_dir)
+    _, name, version = basename.split(/^(.*)-(.*)$/)
+    puts "** updating #{name}-#{version}"
+    system "gem", "rdoc", "--ri", "--rdoc", "--version", version, name
+  end
+end
