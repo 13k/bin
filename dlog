@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [[ -z "$1" ]]; then
+	echo "usage: $0 <com.daemon.example>"
+	exit 1
+fi
+
+sudo tail -F /var/log/system.log | grep --line-buffered "$1\[" | grep "$1"
