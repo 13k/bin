@@ -1,0 +1,30 @@
+#!/bin/bash
+# vim: set ft=sh:
+
+AGENT="/usr/local/bin/gpg-agent"
+
+if [[ ! -x "$AGENT" ]]; then
+  echo "[ERROR] ${AGENT} does not exist or not executable"
+  exit 1
+fi
+
+function log() {
+  level="$1"
+  timestamp=$(date +'%Y-%m-%d %H:%M:%S')
+
+  shift
+  echo -e "[${level}] ${timestamp} $@"
+}
+
+function info() {
+  log INFO "$@"
+}
+
+gpg_info_file="${HOME}/.gpg-agent-info"
+output=$($AGENT --daemon --write-env-file "$gpg_info_file")
+eval "$output"
+launchctl setenv GPG_AGENT_INFO "$GPG_AGENT_INFO"
+
+info "gpg-agent is running."
+info "$output"
+info "launchctl: $(launchctl getenv GPG_AGENT_INFO)"
