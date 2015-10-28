@@ -2,10 +2,11 @@
 
 require 'webrick'
 
-p = ENV['PORT'] || ARGV.first || 4567
-d = ENV['DIR'] || ARGV.last || Dir.pwd
+a = ENV['ADDR']
+p = ENV['PORT'] || 4567
+d = ENV['DIR'] || Dir.pwd
 
-s = WEBrick::Utils.create_listeners nil, p
+s = WEBrick::Utils.create_listeners a, p
 
 sv = WEBrick::HTTPServer.new({
   :DoNotListen => true,
