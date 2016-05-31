@@ -1,0 +1,4 @@
+#!/bin/sh
+
+tmpdir=$(mktemp -d)
+exec rsync -a --delete $tmpdir/ "$1"/
