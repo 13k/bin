@@ -1,4 +1,0 @@
-#!/bin/sh
-
-dir="${1:-.}"
-find "$dir" -name '*.orig' -print -delete
