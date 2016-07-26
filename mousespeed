@@ -1,3 +1,21 @@
-xinput set-prop 12 'Device Accel Profile' -1
-xinput set-prop 12 'Device Accel Velocity Scaling' 1
-xinput set-prop 12 'Device Accel Constant Deceleration' 3
+#!/bin/bash
+
+declare -A settings=(
+	["Device Accel Profile"]=-1
+	["Device Accel Velocity Scaling"]=1
+	["Device Accel Constant Deceleration"]=3
+)
+
+mouse_ids=$(xinput list --short | grep -E 'slave\s+pointer' | sed -re 's/.*id=([0-9]+).*/\1/')
+
+for id in $mouse_ids; do
+	props=$(xinput list-props "$id")
+
+	for prop in "${!settings[@]}"; do
+		value="${settings[$prop]}"
+
+		if echo "$props" | grep -q "$prop"; then
+			xinput set-prop "$id" "$prop" "$value"
+		fi
+	done
+done
