@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+
+require 'pathname'
+require 'webrick'
+
+class FileUploadHandler < WEBrick::HTTPServlet::DefaultFileHandler
+  def do_POST(req, res)
+    @local_path.dirname.mkpath
+
+    open(@local_path, 'wb') do |f|
+      req.body do |chunk|
+        f.write(chunk)
+      end
+    end
+
+    raise WEBrick::HTTPStatus::Created
+  end
+end
+
+class FileUploadServlet < WEBrick::HTTPServlet::FileHandler
+  def do_POST(req, res)
+    filename = available_filename(req, res)
+    handler = FileUploadHandler.get_instance(@config, filename)
+    handler.service(req, res)
+  end
+
+  private
+
+  def available_filename(req, res)
+    raise WEBrick::HTTPStatus::NotFound, "`#{req.path}' not found" unless @root
+    root = Pathname.new(@root).realpath
+    root.join(req.path_info.sub(%r|\A/|, '')).expand_path.tap do |local_path|
+      raise WEBrick::HTTPStatus::BadRequest unless local_path.ascend {|p| break true if p == root }
+      raise WEBrick::HTTPStatus::Conflict if File.exist?(local_path)
+      check_filename(req, res, local_path.basename.to_path)
+    end
+  end
+end
+
+addr = ENV.fetch('ADDR', '0.0.0.0')
+port = ENV.fetch('PORT', 4567).to_i
+root = ENV.fetch('DIR', Dir.pwd)
+
+listeners = WEBrick::Utils.create_listeners(addr, port)
+
+sv = WEBrick::HTTPServer.new({
+  DoNotListen: true,
+  Port: port,
+})
+
+sv.listeners.replace(listeners)
+sv.mount('/', FileUploadServlet, root)
+
+trap('INT') { sv.shutdown }
+sv.start
