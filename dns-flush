@@ -1,0 +1,41 @@
+#!/bin/sh
+
+function flush_macos() {
+	macos_version="`sw_vers -productVersion`"
+
+	case "$macos_version" in
+		# Sierra, High Sierra
+		10.1[23].*)
+			sudo killall -HUP mDNSResponder
+			sudo killall mDNSResponderHelper
+			sudo dscacheutil -flushcache
+			;;
+		# El Capitan
+		10.11.*)
+			sudo killall -HUP mDNSResponder
+			;;
+		# Yosemite (newer)
+		10.10.[4-9]*)
+			sudo dscacheutil -flushcache
+			sudo killall -HUP mDNSResponder
+			;;
+		# Yosemite (older)
+		10.10.[0-3])
+			sudo discoveryutil udnsflushcaches
+			;;
+		*)
+			echo "Not supported macOS version ${macos_version}"
+			;;
+	esac
+}
+
+case "`uname -s`" in
+	Darwin) flush_macos;;
+	Linux)
+		echo "not implemented"
+		;;
+	*)
+		echo "Unknown OS"
+		exit 1
+		;;
+esac
