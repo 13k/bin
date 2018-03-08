@@ -1,0 +1,44 @@
+#!/bin/bash
+##
+# Copies all the data from one existing volume to another volume.
+#
+# Usage: docker-vol-cp [options] <source> <destination>
+#
+# Options:
+#
+#   -c    Creates the destination volume
+##
+
+help() {
+	sed -n '3,/^##/ s/^# //p' <"$0"
+	exit 1
+}
+
+create=0
+
+while getopts "ch" opt; do
+	case "$opt" in
+		c) create=1;;
+		h) help;;
+		*) echo "Invalid option $opt"; help;;
+	esac
+done
+
+shift $((OPTIND - 1))
+
+[[ $# -lt 2 ]] && help
+
+set -o errexit
+
+if [[ $create -eq 1 ]]; then
+	echo "Creating volume $2"
+	docker volume create "$2"
+fi
+
+echo "Copying data from $1 to $2"
+docker run --rm \
+           -i \
+           -t \
+           -v "$1:/data-src" \
+           -v "$2:/data-dest" \
+					 alpine ash -c "cd /data-src && cp -a . /data-dest"
