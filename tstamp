@@ -1,21 +1,120 @@
 #!/bin/bash
 
-if [ -z "$*" ]; then
-	fmt='%Y%m%d-%H%M%S'
-else
-	fmt=''
-	while [ $# -gt 0 ]; do
-		switch=$1; shift
-		case $switch in
-			y) fmt="$fmt%y";;
-			Y) fmt="$fmt%Y";;
-			m) fmt="$fmt%m";;
-			d) fmt="$fmt%d";;
-			h) fmt="$fmt%H";;
-			i) fmt="$fmt%M";;
-			s) fmt="$fmt%S";;
-		esac
-	done
-fi
+declare -A FORMATS=(
+	# 1521586812
+	[epoch]="%s"
+	# 2018-03-20 20:19:16
+	[log]="%Y-%m-%d %H:%M:%S"
+	# 2018-03-20 20:19:16.155076137
+	[logn]="%Y-%m-%d %H:%M:%S.%N"
+	# 20180320201940
+	[zip]="%Y%m%d%H%M%S"
+	# 07:57PM
+	[kitchen]="%I:%M%p"
+	# 02 Jan 06 15:04 MST
+	[rfc822]="%d %b %y %H:%M %Z"
+	# 02 Jan 06 15:04 -0700
+	[rfc822z]="%d %b %y %H:%M %z"
+	# Mon, 14 Aug 2006 02:34:56 MST
+	[rfc1123]="%a, %d %b %Y %H:%M:%S %Z"
+	# Mon, 14 Aug 2006 02:34:56 -0600
+	[rfc1123z]="%a, %d %b %Y %H:%M:%S %z"
+	# 2006-01-02T15:04:05Z07:00
+	[rfc3339]="%Y-%m-%dT%H:%M:%SZ%:z"
+	# Mon, 14 Aug 2006 02:34:56 GMT (always in UTC)
+	[rfc7231]="%a, %d %b %Y %H:%M:%S GMT"
+)
 
-date +"$fmt"
+declare -A FORMAT_ALIASES=(
+	[unix]="epoch"
+	[email]="rfc1123z"
+	[rfc5322]="rfc1123z"
+	[http]="rfc7231"
+)
+
+declare -A UTC_FORMATS=(
+	[epoch]=0
+	[log]=0
+	[logn]=0
+	[zip]=0
+	[kitchen]=0
+	[rfc822]=0
+	[rfc822z]=0
+	[rfc1123]=0
+	[rfc1123z]=0
+	[rfc3339]=0
+	[rfc7231]=1
+)
+
+DEFAULT_FORMAT="${FORMATS[log]}"
+UTC=0
+
+function help() {
+	exit 1
+}
+
+function parse_format_name() {
+	local fmt_name_arg="${1#-}"
+	local fmt_name="${fmt_name_arg}"
+	local fmt="${FORMATS[$fmt_name]}"
+
+	if [[ -z "$fmt" ]]; then
+		fmt_name="${FORMAT_ALIASES[$fmt_name]}"
+	fi
+
+	if [[ -z "$fmt_name" ]]; then
+		echo "$fmt_name_arg"
+		return 1
+	fi
+
+	echo "$fmt_name"
+	return 0
+}
+
+fmt=""
+fmt_name=""
+
+while [[ $# -gt 0 ]]; do
+	arg="$1"
+
+	case "$arg" in
+		-u|-utc)
+			UTC=1
+			;;
+		-[a-zA-Z0-9]*)
+			if [[ -n "$fmt" ]]; then
+				echo >&2 "Too many formats specified"
+				exit 1
+			fi
+
+			fmt_name="$(parse_format_name "$arg")"
+
+			if [[ $? -ne 0 ]]; then
+				echo >&2 "Invalid format: $fmt_name"
+				exit 1
+			fi
+
+			fmt="${FORMATS[$fmt_name]}"
+
+			[[ "${UTC_FORMATS[$fmt_name]}" -eq 1 ]] && UTC=1
+			;;
+		*)
+			if [[ -n "$fmt" ]]; then
+				echo >&2 "Too many formats specified"
+				exit 1
+			fi
+
+			fmt="$arg"
+			;;
+	esac
+
+	shift
+done
+
+[[ -z "$fmt" ]] && fmt="$DEFAULT_FORMAT"
+
+opts=()
+
+[[ "$UTC" -eq 1 ]] && opts[${#opts[@]}]="-u"
+
+date "${opts[@]}" +"$fmt"
