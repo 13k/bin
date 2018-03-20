@@ -1,0 +1,10 @@
+#!/bin/bash
+
+exec streamlink \
+	--player=mpv \
+	-l debug \
+	--hls-live-edge 5 \
+	--stream-segment-threads 8 \
+	--ringbuffer-size 256M \
+	"$@" \
+	best
