@@ -9,6 +9,8 @@ declare -A FORMATS=(
 	[logn]="%Y-%m-%d %H:%M:%S.%N"
 	# 20180320201940
 	[zip]="%Y%m%d%H%M%S"
+	# 20180320
+	[dzip]="%Y%m%d"
 	# 07:57PM
 	[kitchen]="%I:%M%p"
 	# 02 Jan 06 15:04 MST
