@@ -16,7 +16,7 @@
 ## Note that unpublishing a branch doesn't delete the local branch.
 ## Safety first!
 ##
-## git-publish-branch Copyright 2008 William Morgan <wmorgan-git-wt-add@masanjin.net>. 
+## git-publish-branch Copyright 2008 William Morgan <wmorgan-git-wt-add@masanjin.net>.
 ## This program is free software: you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
 ## the Free Software Foundation, either version 3 of the License, or (at
@@ -30,41 +30,40 @@
 ## You can find the GNU General Public License at:
 ##   http://www.gnu.org/licenses/
 
-def exec cmd
-  puts cmd
-  system cmd or die unless $fake
+def exec(*args, mode: :run)
+  puts(args.join(' '))
+  system(*args) || die if mode == :run
 end
 
-def die s=nil
-  $stderr.puts s if s
+def die(message = nil)
+  warn(message) if message
   exit(-1)
 end
 
-head = `git symbolic-ref HEAD`.chomp.gsub(/refs\/heads\//, "")
-delete = ARGV.delete "-d"
-$fake = ARGV.delete "-n"
-branch = (ARGV.shift || head).gsub(/refs\/heads\//, "")
-remote = ARGV.shift || "origin"
-local_ref = `git show-ref heads/#{branch}`
-remote_ref = `git show-ref remotes/#{remote}/#{branch}`
-remote_config = `git config branch.#{branch}.merge`
+mode = ARGV.delete('-n') ? :dry_run : :run
+delete = ARGV.delete('-d')
+branch, remote = ARGV.shift(2)
+branch ||= `git symbolic-ref --short HEAD`.strip
+remote ||= 'origin'
+local_ref = `git show-ref --hash heads/#{branch}`.strip
+remote_ref = `git show-ref --hash remotes/#{remote}/#{branch}`.strip
+remote_config = `git config branch.#{branch}.merge`.strip
 
 if delete
   ## we don't do any checking here because the remote branch might actually
   ## exist, whether we actually know about it or not.
-  exec "git push #{remote} :refs/heads/#{branch}"
+  exec('git', 'push', remote, ":refs/heads/#{branch}", mode: mode)
 
   unless local_ref.empty?
-    exec "git config --unset branch.#{branch}.remote"
-    exec "git config --unset branch.#{branch}.merge"
+    exec('git', 'config', '--unset', "branch.#{branch}.remote", mode: mode)
+    exec('git', 'config', '--unset', "branch.#{branch}.merge", mode: mode)
   end
 else
-  die "No local branch #{branch} exists!" if local_ref.empty?
-  die "A remote branch #{branch} on #{remote} already exists!" unless remote_ref.empty?
-  die "Local branch #{branch} is already a tracking branch!" unless remote_config.empty?
+  die("No local branch #{branch} exists!") if local_ref.empty?
+  die("A remote branch #{branch} on #{remote} already exists!") unless remote_ref.empty?
+  die("Local branch #{branch} is already a tracking branch!") unless remote_config.empty?
 
-  exec "git push #{remote} #{branch}:refs/heads/#{branch}"
-  exec "git config branch.#{branch}.remote #{remote}"
-  exec "git config branch.#{branch}.merge refs/heads/#{branch}"
+  exec('git', 'push', remote, "#{branch}:refs/heads/#{branch}", mode: mode)
+  exec('git', 'config', "branch.#{branch}.remote", remote, mode: mode)
+  exec('git', 'config', "branch.#{branch}.merge", "refs/heads/#{branch}", mode: mode)
 end
-
