@@ -49,7 +49,29 @@ sv = WEBrick::HTTPServer.new({
 })
 
 sv.listeners.replace(listeners)
-sv.mount('/', FileUploadServlet, root)
+
+sv.mount_proc('/console') do |req, res|
+  require 'pry'
+  binding.pry
+  res.status = 204
+end
+
+sv.mount_proc('/debug') do |req, res|
+  values = {
+    req_line: req.request_line.strip,
+    headers: req.raw_header.join,
+    body: req.body,
+  }
+
+  res.body = format(<<~BODY, values)
+    %<req_line>s
+    %<headers>s
+    %<body>s
+  BODY
+  res.status = 200
+end
+
+sv.mount('/fs', FileUploadServlet, root)
 
 trap('INT') { sv.shutdown }
 sv.start
