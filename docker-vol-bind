@@ -1,0 +1,19 @@
+#!/bin/bash
+
+function usage() {
+  echo "Usage: $0 <volume path> <volume name>"
+  exit 1
+}
+
+[[ $# -lt 2 ]] && usage
+
+case "$1" in
+  help|-h|--help) usage;;
+  *) ;;
+esac
+
+exec docker volume create \
+  -o type=none \
+  -o o=bind \
+  -o device="$1" \
+  "$2"
